@@ -114,7 +114,7 @@ public class User {
             System.out.print("Confirm there is no turning back!!(y/n) ");
             String conf=a.next();
 
-            if(conf=="n")
+            if(conf.equalsIgnoreCase("n"))
             {
                 System.out.println("Your ticket is not booked");
                 r.user_mode();
@@ -133,7 +133,7 @@ public class User {
             }
             else if(catnum==2)
                 System.out.println("Amount to be paid is "+(fare-((k*(fare/seat))*0.5)));
-            chart(pname,page,coach,tnum,dt2);
+            chart(pname,page,pgen,coach,tnum,dt2);
         }
     }
     int reserve(int tnum,String tname,String bp,String dp,int seat,int ch)
@@ -169,7 +169,9 @@ public class User {
             }
             if(flag!=0)
             {
-                PreparedStatement st=c.prepareStatement("update train set seats=seats-'"+seat+"' where tnum='"+tnum+"' ");
+                PreparedStatement st=c.prepareStatement("update train set seats=seats- ? where tnum=? ");
+                   st.setInt(1,seat);
+                   st.setInt(2,tnum);
                 st.execute();
             }
         }
@@ -211,7 +213,7 @@ public class User {
                     pass);
             Statement s1=c.createStatement();
             ResultSet r1=s1.executeQuery("select * from chart order by sno desc limit 1");
-            r1.first();
+            if(!r1.first())return;
             Statement s2=c.createStatement();
             ResultSet r2=s2.executeQuery("select * from chart where pnr='"+r1.getLong(1)+"' ");
             r2.first();
@@ -241,7 +243,7 @@ public class User {
         }
     }
 
-    void chart(String pname[],int page[],String coach,int tnum,java.sql.Date dt2)
+    void chart(String pname[],int page[],String pgen[],String coach,int tnum,java.sql.Date dt2)
     {
         try
         {
@@ -259,23 +261,31 @@ public class User {
             Statement s1=c.createStatement();
             Statement s3=c.createStatement();
             ResultSet r3=s3.executeQuery("select * from chart order by sno desc limit 1");
-            r3.first();
+            long lastPnr=0;
+            if(r3.next())lastPnr=r3.getLong(1);
             for(int i=0;i<seat;i++)
             {
                 ResultSet r2=s2.executeQuery("select * from chart order by sno desc limit 1");
                 r2.first();
-                ResultSet r1=s1.executeQuery("select * from train where tnum='"+tnum+"' and doj='"+dt2+"' ");
+                PreparedStatement ps=c.prepareStatement("select * from train where tnum=? and doj=?");
+                ps.setInt(1,tnum);
+                ps.setDate(2,dt2);
+                ResultSet r1=ps.executeQuery();
                 r1.first();
                 PreparedStatement st=c.prepareStatement("insert into chart (pnr,name,age,gender,seatno,coach,status,timestamp,dot,tnum) values(?,?,?,?,?,?,?,?,?,?)");
-                st.setLong(1,r3.getLong(1)+1);
+                st.setLong(1,lastPnr+1);
                 st.setString(2,pname[i]);
                 st.setInt(3,page[i]);
                 st.setString(4,pgen[i]);
-                if(r1.getInt(3)>0)			st.setInt(5,r2.getInt(5)+1);
-                else						st.setInt(5,0);
+                if(r1.getInt(3)>0)
+                    st.setInt(5,r2.getInt(5)+1);
+                else
+                    st.setInt(5,0);
                 st.setString(6,coach);
-                if(r1.getInt(3)>0)			st.setString(7,"confirmed");
-                else						st.setString(7,"waiting");
+                if(r1.getInt(3)>0)
+                    st.setString(7,"confirmed");
+                else
+                    st.setString(7,"waiting");
                 st.setTimestamp(8,sqt);
                 st.setDate(9,r1.getDate(10));
                 st.setInt(10,tnum);
@@ -329,7 +339,9 @@ public class User {
         ResultSet r=stmt.executeQuery("select * from chart where pnr='"+pnr+"' ");
         if(r.first())
         {
-            PreparedStatement st=c.prepareStatement("update chart set status='"+j+"' where pnr='"+pnr+"' ");
+            PreparedStatement st=c.prepareStatement("update chart set status=? where pnr=? ");
+            st.setString(1,j);
+            st.setLong(2,pnr);
             st.executeUpdate();
         }
         else

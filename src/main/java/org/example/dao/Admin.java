@@ -17,7 +17,7 @@ public class Admin {
 
         System.out.print("Enter train number : ");
         num=i.nextInt();
-        if(num<9999&&num>99999)
+        if(num<9999 || num>99999)
         {
             System.out.println("Enter correct train number!!!");
         }
@@ -104,7 +104,7 @@ public class Admin {
             user_db(uname,password,age,gen);
         }
         else
-            System.out.println("Username alredy exist");
+            System.out.println("Username already exist");
         System.out.print("Do you want to continue or return to main menu (y/n) respectively  : ");
         String ch=i.next();
         if(ch.equals("y"))
@@ -137,20 +137,12 @@ public class Admin {
                 pass);
         Statement s=c.createStatement();
         ResultSet r=s.executeQuery("select uname,pass from user");
-        r.next();
-        if(uname.equals(r.getString(1))&&password.equals(r.getString(2)))
-        {
-            return 1;
-        }
-        else
-        {
-            while(r.next())
-            {
-                if(uname.equals(r.getString(1))&&password.equals(r.getString(2)))
-                    return 1;
+       while( r.next()) {
+           if (uname.equals(r.getString(1)) && password.equals(r.getString(2)))
 
-            }
-        }
+               return 1;
+
+       }
         return 0;
     }
 
@@ -220,7 +212,7 @@ public class Admin {
     void cr_train_info() throws Exception
     {
         String ch="y";
-        while(ch=="y")
+        while(ch.equalsIgnoreCase("y"))
         {
             train_info();
             System.out.print("Do you want to continue (y/n) : ");
@@ -247,7 +239,9 @@ public class Admin {
             Class.forName(mysqlJDBCDriver);
             Connection c = DriverManager.getConnection(url, user,
                     pass);
-            PreparedStatement st=c.prepareStatement("update train set doj = DATE_ADD(doj, INTERVAL '"+d+"' DAY) where tnum='"+tnum+"' ");
+            PreparedStatement st=c.prepareStatement("update train set doj = DATE_ADD(doj, INTERVAL ? DAY) where tnum=? ");
+            st.setInt(1,d);
+            st.setInt(2,tnum);
             st.execute();
         }
         catch(Exception e)
