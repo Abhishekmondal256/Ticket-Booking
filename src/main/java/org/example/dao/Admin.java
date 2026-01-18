@@ -224,29 +224,93 @@ public class Admin {
 
     void train_update_date() throws Exception
     {
-        try
-        {
-            int tnum,d;
 
-            System.out.print("Enter train Number whose date you want to update : ");
-            tnum=i.nextInt();
-            System.out.print("Enter number of days to be incremented : ");
-            d=i.nextInt();
-            String mysqlJDBCDriver = "com.mysql.cj.jdbc.Driver"; // jdbc driver
-            String url = "jdbc:mysql://localhost:3306/Railway"; // mysql url
-            String user = "root"; // mysql username
-            String pass = "abhihaina"; // mysql passcode
+
+        Connection c = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            int tnum, h, m, s;
+
+            System.out.print("Enter train number : ");
+            tnum = i.nextInt();
+
+            System.out.print("Enter hours to add : ");
+            h = i.nextInt();
+
+            System.out.print("Enter minutes to add : ");
+            m = i.nextInt();
+
+            System.out.print("Enter seconds to add : ");
+            s = i.nextInt();
+
+            String mysqlJDBCDriver = "com.mysql.cj.jdbc.Driver";
+            String url = "jdbc:mysql://localhost:3306/Railway";
+            String user = "root";
+            String pass = "abhihaina";
+
             Class.forName(mysqlJDBCDriver);
-            Connection c = DriverManager.getConnection(url, user,
-                    pass);
-            PreparedStatement st=c.prepareStatement("update train set doj = DATE_ADD(doj, INTERVAL ? DAY) where tnum=? ");
-            st.setInt(1,d);
-            st.setInt(2,tnum);
-            st.execute();
-        }
-        catch(Exception e)
-        {
-            System.out.println(e);
+            c = DriverManager.getConnection(url, user, pass);
+
+            /*  Get old departure time */
+            ps = c.prepareStatement(
+                    "SELECT dtime FROM train WHERE tnum = ?"
+            );
+            ps.setInt(1, tnum);
+            rs = ps.executeQuery();
+
+            if (!rs.next()) {
+                System.out.println("Train not found");
+                return;
+            }
+
+            String oldDtime = rs.getString("dtime"); // HH:mm:ss
+
+            /*  Update dtime & atime */
+            ps = c.prepareStatement(
+                    "UPDATE train SET " +
+                            "dtime = TIME_FORMAT(" +
+                            "ADDTIME(STR_TO_DATE(dtime,'%H:%i:%s'), ?), '%H:%i:%s'), " +
+                            "atime = TIME_FORMAT(" +
+                            "ADDTIME(STR_TO_DATE(atime,'%H:%i:%s'), ?), '%H:%i:%s') " +
+                            "WHERE tnum = ?"
+            );
+
+            String addTime = String.format("%02d:%02d:%02d", h, m, s);
+
+            ps.setString(1, addTime);
+            ps.setString(2, addTime);
+            ps.setInt(3, tnum);
+            ps.executeUpdate();
+
+            /* Get new departure time */
+            ps = c.prepareStatement(
+                    "SELECT dtime FROM train WHERE tnum = ?"
+            );
+            ps.setInt(1, tnum);
+            rs = ps.executeQuery();
+            rs.next();
+
+            String newDtime = rs.getString("dtime");
+
+            /*  Midnight crossover → update date */
+            if (newDtime.compareTo(oldDtime) < 0) {
+                ps = c.prepareStatement(
+                        "UPDATE train SET doj = DATE_ADD(doj, INTERVAL 1 DAY) WHERE tnum = ?"
+                );
+                ps.setInt(1, tnum);
+                ps.executeUpdate();
+            }
+
+            System.out.println("Departure & Arrival time updated successfully");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (rs != null) rs.close();
+            if (ps != null) ps.close();
+            if (c != null) c.close();
         }
         System.out.print("Do you want to continue or return to main menu (y/n) respectively  : ");
         String ch=i.next();
